@@ -1,0 +1,75 @@
+name: Payment Service CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: payment_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d payment_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/payment_db?schema=public
+      JWT_SECRET: test-secret-key-for-ci
+
+    steps:
+      - name: Checkout payment-service
+        uses: actions/checkout@v4
+        with:
+          path: payment-service
+
+      - name: Checkout shared repo
+        uses: actions/checkout@v4
+        with:
+          repository: ShopEcommerce/ecommerce_shop-shared
+          path: shared
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: 'payment-service/package-lock.json'
+
+      - name: Build Shared Library
+        run: |
+          cd shared
+          npm install
+          npm run build
+          npm pack
+
+      - name: Install Dependencies
+        run: |
+          cd payment-service
+          npm install ../shared/teleshop-common-1.0.4.tgz
+          npm install
+
+      - name: Generate Prisma Client
+        run: |
+          cd payment-service
+          npx prisma generate
+
+      - name: Run Linter
+        run: |
+          cd payment-service
+          npm run lint
+
+      - name: Run Tests
+        run: |
+          cd payment-service
+          npm run test:ci

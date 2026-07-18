@@ -1,37 +1,45 @@
-import express, { RequestHandler, ErrorRequestHandler } from 'express';
-import cookieSession from 'cookie-session';
-import cors from 'cors';
-import { errorHandler, NotFoundError, correlationId, currentUser } from '@teleshop/common';
+import express, { RequestHandler, ErrorRequestHandler } from "express";
+import cookieSession from "cookie-session";
+import cors from "cors";
+import {
+  errorHandler,
+  NotFoundError,
+  correlationId,
+  currentUser,
+} from "@teleshop/common";
+import { paymentRouter } from "./modules/payment/payment.route";
 
 const app = express();
 
-app.set('trust proxy', true);
+app.set("trust proxy", true);
 
 app.use(
   cors({
-    origin: true, 
-    credentials: true, 
-  })
+    origin: true,
+    credentials: true,
+  }),
 );
 
 app.use(express.json());
 
 app.use(correlationId as RequestHandler);
 
-app.get('/health', (_req, res) => {
-  res.status(200).send({ status: 'ok', service: 'payment-service' });
+app.get("/health", (_req, res) => {
+  res.status(200).send({ status: "ok", service: "payment-service" });
 });
 
 app.use(
   cookieSession({
     signed: false,
-    secure: process.env.NODE_ENV === 'production', 
+    secure: process.env.NODE_ENV === "production",
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  })
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  }),
 );
 
 app.use(currentUser as RequestHandler);
+
+app.use("/api/payments", paymentRouter);
 
 app.all(/.*/, () => {
   throw new NotFoundError();
