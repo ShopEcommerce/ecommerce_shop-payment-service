@@ -28,10 +28,8 @@ jobs:
       JWT_SECRET: test-secret-key-for-ci
 
     steps:
-      - name: Checkout payment-service
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          path: payment-service
 
       - name: Checkout shared repo
         uses: actions/checkout@v4
@@ -40,36 +38,31 @@ jobs:
           path: shared
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22.x'
-          cache: 'npm'
-          cache-dependency-path: 'payment-service/package-lock.json'
+          package-manager-cache: false
 
       - name: Build Shared Library
         run: |
           cd shared
-          npm install
+          npm install --cache .npm-cache
           npm run build
-          npm pack
+          npm pack --cache .npm-cache
 
       - name: Install Dependencies
         run: |
-          cd payment-service
-          npm install ../shared/teleshop-common-1.0.4.tgz
-          npm install
+          npm install ./shared/teleshop-common-1.0.4.tgz --cache .npm-cache
+          npm install --cache .npm-cache
 
       - name: Generate Prisma Client
         run: |
-          cd payment-service
           npx prisma generate
 
       - name: Run Linter
         run: |
-          cd payment-service
           npm run lint
 
       - name: Run Tests
         run: |
-          cd payment-service
           npm run test:ci
